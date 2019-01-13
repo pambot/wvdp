@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>WVDP</title>
+    <link href="http://cdn.pydata.org/bokeh/release/bokeh-1.0.3.min.css" rel="stylesheet">
+    <link href="http://cdn.pydata.org/bokeh/release/bokeh-widgets-1.0.3.min.css" rel="stylesheet">
+    <style>
+    body {
+    	background-color: #e0e0e0;
+    	padding: 3em;
+    }
+    
+    .header {
+    	font-family: Helvetica;
+    	font-size: 5em;
+    	font-weight: bolder;
+    }
+    
+    .figure-box {
+    	display: auto;
+    }
+    
+    .plot-box {
+    	float: left;
+    }
+    </style>
+  </head>
+  <body>
+  
+  	<div class="header-box">
+			<span class="header">Causal Discovery <br/>on World Development <br/>Indices</span>
+		</div>
+		<div class="figure-box">
+			<div class="plot-box">{{ graph_div | safe }}</div>
+			<div class="plot-box">{{ scatter_div | safe }}</div>
+		</div>
+    
+    <script src="http://cdn.pydata.org/bokeh/release/bokeh-1.0.3.min.js"></script>
+    <script src="http://cdn.pydata.org/bokeh/release/bokeh-widgets-1.0.3.min.js"></script>
+    {{ graph_script | safe }}
+    {{ scatter_script | safe }}
+  </body>
+</html>
