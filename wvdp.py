@@ -12,11 +12,12 @@ from bokeh.io import show, output_notebook, output_file
 from bokeh.plotting import figure
 from bokeh.models import GraphRenderer, StaticLayoutProvider, HoverTool, TapTool, CustomJS
 from bokeh.models.sources import ColumnDataSource
-from bokeh.models.graphs import NodesAndLinkedEdges
+from bokeh.models.graphs import EdgesAndLinkedNodes
 from bokeh.models.glyphs import *
 from bokeh.models.arrow_heads import *
 from bokeh.models.annotations import *
-from bokeh.layouts import gridplot
+from bokeh.models.widgets import *
+from bokeh.layouts import widgetbox
 from bokeh.resources import CDN
 from bokeh.embed import components
 
@@ -29,8 +30,31 @@ app = Flask(__name__)
 
 RADIUS = 0.15
 STEPS = 1000
-OUTLINE = "#383838"
 BACKGROUND = "#e0e0e0"
+
+EDGE_STYLE = {
+		"correlation": {
+				"color": "#ffffff",
+				"width": 2,
+				"alpha": 0.3,
+		},
+		"causal-no-arrow": {
+				"color": "#000000",
+				"width": 2,
+				"alpha": 0.3,
+		},
+		"causal-arrow": {
+				"color": "#000000",
+				"width": 3,
+				"alpha": 0.6,
+		},
+		"causal-genuine": {
+				"color": "#000000",
+				"width": 6,
+				"alpha": 0.9,
+		},
+		
+}
 
 def dist(l1, l2):
     x1, y1 = l1
@@ -57,17 +81,21 @@ def nearest_offset(xs, ys, centroid):
             break
     return i
 
-def make_figure(D, pos, df):
-		data = ColumnDataSource(df)
+def make_figure(D, pos):
+		
+		hover = HoverTool(tooltips=[
+				("start", "@start"),
+				("end", "@end"),
+		])
 		
 		# define gplot
-		gplot = figure(title=None, x_range=(-2, 2), y_range=(-2, 2),
-									tools="reset,save", plot_width=850, plot_height=850, match_aspect=False)
+		gplot = figure(title=None, x_range=(-2, 2), y_range=(-2, 2), tools="reset,save",
+									plot_width=900, plot_height=900, match_aspect=False)
 		gplot.background_fill_color = BACKGROUND
 		gplot.xgrid.grid_line_color = None
 		gplot.ygrid.grid_line_color = None
 		gplot.axis.visible = False
-		gplot.add_tools(HoverTool(tooltips=None))
+		gplot.add_tools(hover, TapTool())
 		gplot.toolbar.logo = None
 		gplot.toolbar_location = None
 		gplot.border_fill_color = None
@@ -76,22 +104,25 @@ def make_figure(D, pos, df):
 		graph = GraphRenderer()
 
 		# add nodes
-		light_node = Ellipse(height=RADIUS, width=RADIUS, fill_color="color", line_color=OUTLINE, line_width=5)
-		heavy_node = Ellipse(height=RADIUS, width=RADIUS, fill_color="color", line_color=OUTLINE, line_width=7)
+		light_node = Ellipse(height=RADIUS, width=RADIUS, fill_color="color", line_color="#000000", line_width=5)
+		heavy_node = Ellipse(height=RADIUS, width=RADIUS, fill_color="color", line_color="#000000", line_width=7)
 		
 		graph.node_renderer.data_source.add(list(pos.keys()), "index")
 		graph.node_renderer.data_source.add(list(pos.keys()), "label")
 		graph.node_renderer.data_source.add(colormap(len(pos)), "color")
 		graph.node_renderer.data_source.add([pos[n][0] for n in pos.keys()], "x")
 		graph.node_renderer.data_source.add([pos[n][1] for n in pos.keys()], "y")
+		
 		graph.node_renderer.glyph = light_node
 		graph.node_renderer.hover_glyph = heavy_node
+		graph.node_renderer.selection_glyph = heavy_node
+		graph.node_renderer.nonselection_glyph = light_node
 
 		# add directed edges
-		graph.edge_renderer.data_source.data = dict(start=[], end=[], xs=[], ys=[], edge_color=[])
+		graph.edge_renderer.data_source.data = dict(start=[], end=[], xs=[], ys=[], color=[], width=[], alpha=[])
 
-		for e in D.edges():
-				n1, n2 = e
+		for e in D.edges(data=True):
+				n1, n2, d = e
 				l1, l2 = pos[n1], pos[n2]
 				xs, ys = bezier(l1, l2, 1)
 				os = nearest_offset(xs, ys, l2)
@@ -99,15 +130,32 @@ def make_figure(D, pos, df):
 				graph.edge_renderer.data_source.data["end"].append(n2)
 				graph.edge_renderer.data_source.data["xs"].append(xs[os:-os])
 				graph.edge_renderer.data_source.data["ys"].append(ys[os:-os])
-				graph.edge_renderer.data_source.data["edge_color"].append(OUTLINE)
 
-		light_edge = MultiLine(line_width=2, line_color="edge_color", line_alpha=0.5)
-		heavy_edge = MultiLine(line_width=5, line_color="edge_color", line_alpha=1)
+				if not d["causal"]:
+						kind = "correlation"
+						for s in EDGE_STYLE[kind].keys():
+								graph.edge_renderer.data_source.data[s].append(EDGE_STYLE[kind][s])
+				elif not d["directed"]:
+						kind = "causal-no-arrow"
+						for s in EDGE_STYLE[kind].keys():
+								graph.edge_renderer.data_source.data[s].append(EDGE_STYLE[kind][s])
+				elif not d["genuine"]:
+						kind = "causal-arrow"
+						for s in EDGE_STYLE[kind].keys():
+								graph.edge_renderer.data_source.data[s].append(EDGE_STYLE[kind][s])
+				else:
+						kind = "causal-genuine"
+						for s in EDGE_STYLE[kind].keys():
+								graph.edge_renderer.data_source.data[s].append(EDGE_STYLE[kind][s])
+
+		light_edge = MultiLine(line_width="width", line_color="color", line_alpha="alpha")
+		heavy_edge = MultiLine(line_width="width", line_color="color", line_alpha=1)
 		
 		graph.edge_renderer.glyph = light_edge
 		graph.edge_renderer.hover_glyph = heavy_edge
-		graph.edge_renderer.selection_glyph = light_edge
+		graph.edge_renderer.selection_glyph = heavy_edge
 		graph.edge_renderer.nonselection_glyph = light_edge
+
 		
 		# 		for e, xs, ys in zip(D.edges(data=True),
 		# 												 graph.edge_renderer.data_source.data["xs"],
@@ -137,48 +185,13 @@ def make_figure(D, pos, df):
 
 		# render
 		graph.layout_provider = StaticLayoutProvider(graph_layout=pos)
-		graph.inspection_policy = NodesAndLinkedEdges()
-		
-		splot = figure(title=None, tools="pan,zoom_in,zoom_out,box_zoom,reset,save", plot_width=700, plot_height=850)
-
-		shover = HoverTool(tooltips=[
-				("country", "@country")
-		])
-
-		splot.background_fill_color = BACKGROUND
-		splot.add_tools(shover)
-		splot.toolbar.logo = None
-		splot.toolbar_location = "left"
-		splot.border_fill_color = None
-		splot.outline_line_color = None
-		
-		sx = "tax burden score"
-		sy = "GINI index"
-		data.add(df[sx], "x")
-		data.add(df[sy], "y")
-		
-		splot.circle(x="x", y="y", 
-				source=data, radius="radius", color="#526354"
-		)
-		splot.xaxis.axis_label = sx
-		splot.yaxis.axis_label = sy
-
-		# 		gplot.js_on_event('tap', CustomJS(args=dict(data=data), code="""
-		# 				label = cb_obj.label;
-		# 				data['x'] = data[label];
-		# 				data.change.emit()
-		# 		"""))
-		
+		graph.inspection_policy = EdgesAndLinkedNodes()
+		graph.selection_policy = EdgesAndLinkedNodes()
 		gplot.renderers.append(graph)
 		
-		return gplot, splot
-
-def process_data(df):
-		df.drop("ISO Country code", axis=1, inplace=True)
-		df.dropna(axis=1, how="all", inplace=True)
-		df.loc[:, "radius"] = (df["population"]/df["population"].max() + 0.03)*5
-		
-		return df
+		return {
+				"gplot": gplot, 
+		}
 
 @app.route("/wvdp/")
 def chart():
@@ -187,22 +200,12 @@ def chart():
 
 		with open("data/pos", "rb") as f:
 				pos = pickle.load(f)
-
-		df = pd.read_csv("data/wdvp_stats.tsv", 
-                 sep="\t", 
-                 header=0, 
-                 skiprows=range(1, 5),
-                 thousands=',',
-                 na_values=["-"])
-		df = process_data(df)
-		gplot, splot = make_figure(D, pos, df)
-		graph_script, graph_div = components(gplot)
-		scatter_script, scatter_div = components(splot)
+		
+		f = make_figure(D, pos)
+		graph_script, graph_div = components(f["gplot"])
 		return render_template("index.html", 
 				graph_div=graph_div,
 				graph_script=graph_script,
-				scatter_script=scatter_script,
-				scatter_div=scatter_div
 		)
 
 if __name__ == "__main__":
