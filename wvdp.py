@@ -1,4 +1,5 @@
 import math
+import copy
 import json
 import numpy as np
 import pandas as pd
@@ -84,8 +85,10 @@ def nearest_offset(xs, ys, centroid):
 def make_figure(D, pos):
 		
 		hover = HoverTool(tooltips=[
-				("start", "@start"),
-				("end", "@end"),
+				("node", "@start"),
+				("node", "@end"),
+				("pearson", "@r"),
+				("p-value", "@pval"),
 		])
 		
 		# define gplot
@@ -119,7 +122,9 @@ def make_figure(D, pos):
 		graph.node_renderer.nonselection_glyph = light_node
 
 		# add directed edges
-		graph.edge_renderer.data_source.data = dict(start=[], end=[], xs=[], ys=[], color=[], width=[], alpha=[])
+		graph.edge_renderer.data_source.data = dict(
+				start=[], end=[], xs=[], ys=[], color=[], width=[], alpha=[], r=[], pval=[]
+		)
 
 		for e in D.edges(data=True):
 				n1, n2, d = e
@@ -130,6 +135,8 @@ def make_figure(D, pos):
 				graph.edge_renderer.data_source.data["end"].append(n2)
 				graph.edge_renderer.data_source.data["xs"].append(xs[os:-os])
 				graph.edge_renderer.data_source.data["ys"].append(ys[os:-os])
+				graph.edge_renderer.data_source.data["r"].append(d["r"])
+				graph.edge_renderer.data_source.data["pval"].append(d["pval"])
 
 				if not d["causal"]:
 						kind = "correlation"
@@ -188,9 +195,41 @@ def make_figure(D, pos):
 		graph.inspection_policy = EdgesAndLinkedNodes()
 		graph.selection_policy = EdgesAndLinkedNodes()
 		gplot.renderers.append(graph)
+
+		# widgets
+		checkbox = CheckboxButtonGroup(
+        labels=["correlation", "undirected causal", "directed causal", "genuine causal"], 
+        active=[0, 1, 2, 3]
+    )
+		slider = Slider(start=0.0, end=1.0, value=0.0, step=0.1, title="absolute correlation coefficient")
+		
+		edges_original = ColumnDataSource(copy.deepcopy(graph.edge_renderer.data_source.data))
+		callback = CustomJS(
+				args=dict(
+						graph=graph,
+						edges_original=edges_original, 
+						checkbox=checkbox,
+						slider=slider
+				), 
+				code="""
+						var s = graph.edge_renderer.data_source.data;
+						var o = edges_original.data;
+						for (var key in o) {
+								var tmp = [];
+								for (var i = 0; i < o['start'].length; ++i) {
+										if (Math.abs(o['r'][i]) > slider.value) {
+												tmp.push(o[key][i]);
+										}
+								}
+								s[key] = tmp;
+						}
+						graph.edge_renderer.data_source.change.emit();
+		""")
+		slider.js_on_change("value", callback)
 		
 		return {
 				"gplot": gplot, 
+				"widgets": widgetbox(checkbox, slider, width=450)
 		}
 
 @app.route("/wvdp/")
@@ -202,10 +241,11 @@ def chart():
 				pos = pickle.load(f)
 		
 		f = make_figure(D, pos)
-		graph_script, graph_div = components(f["gplot"])
+		script, (graph_div, widgets_div) = components([f["gplot"], f["widgets"]])
 		return render_template("index.html", 
 				graph_div=graph_div,
-				graph_script=graph_script,
+				widgets_div=widgets_div,
+				script=script,
 		)
 
 if __name__ == "__main__":

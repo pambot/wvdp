@@ -21,8 +21,18 @@
     	font-weight: bolder;
     }
     
+    .text {
+    	font-family: Helvetica;
+    	font-size: 1em;
+    }
+    
     .figure-box {
     	display: auto;
+    }
+    
+    .text-box {
+    	padding-top: 3em;
+    	padding-bottom: 3em;
     }
     
     .plot-box {
@@ -35,13 +45,20 @@
 			<div class="header-box">
 				<span class="header">Causal Discovery <br/>on World Development <br/>Indices</span>
 			</div>
+			<div class="text-box">
+				<span class="text">
+					Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum bibendum lobortis nunc quis pellentesque. 
+					In et tortor sit amet libero aliquam cursus. Morbi ornare quam sed odio vulputate, quis rhoncus sem placerat. 
+				</span>
+			</div>
 			<div class="figure-box">
+			  <div class="plot-box">{{ widgets_div | safe }}</div>
 				<div class="plot-box">{{ graph_div | safe }}</div>
 			</div>
 		</div>
     
     <script src="http://cdn.pydata.org/bokeh/release/bokeh-1.0.4.min.js"></script>
     <script src="http://cdn.pydata.org/bokeh/release/bokeh-widgets-1.0.4.min.js"></script>
-    {{ graph_script | safe }}
+    {{ script | safe }}
   </body>
 </html>
