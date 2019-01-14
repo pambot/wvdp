@@ -52,7 +52,7 @@ EDGE_STYLE = {
 		},
 		"genuine causal": {
 				"color": "#000000",
-				"width": 6,
+				"width": 5,
 				"alpha": 0.9,
 		},
 		
@@ -88,7 +88,7 @@ def make_figure(D, pos):
 		hover = HoverTool(tooltips=[
 				("node", "@start"),
 				("node", "@end"),
-				("pearson", "@r"),
+				("pearson", "@r{0.3f}"),
 				("p-value", "@pval"),
 		])
 		
@@ -193,16 +193,24 @@ def make_figure(D, pos):
 		graph.layout_provider = StaticLayoutProvider(graph_layout=pos)
 		graph.inspection_policy = EdgesAndLinkedNodes()
 		graph.selection_policy = EdgesAndLinkedNodes()
-		gplot.renderers.append(graph)
 
 		# widgets
+		edges_original = ColumnDataSource(copy.deepcopy(graph.edge_renderer.data_source.data))
+
 		checkbox = CheckboxButtonGroup(
         labels=EDGE_LABELS, 
-        active=[edge_type_index[k] for k in EDGE_LABELS]
+        active=[0]
     )
-		slider = Slider(start=0.0, end=1.0, value=0.0, step=0.1, title="absolute correlation coefficient")
-		
-		edges_original = ColumnDataSource(copy.deepcopy(graph.edge_renderer.data_source.data))
+
+		default = graph.edge_renderer.data_source.data
+		for k in edges_original.data:
+				default[k] = [
+						edges_original.data[k][i] for i, t in enumerate(edges_original.data['type']) if t == 0
+				]
+
+		slider = Slider(start=0.0, end=1.0, value=0.0, step=0.1, 
+				title="absolute correlation coefficient is greater than")
+
 		callback = CustomJS(
 				args=dict(
 						graph=graph,
@@ -228,9 +236,11 @@ def make_figure(D, pos):
 		slider.js_on_change("value", callback)
 		checkbox.js_on_change("active", callback)
 		
+		gplot.renderers.append(graph)
+		
 		return {
 				"gplot": gplot, 
-				"widgets": widgetbox(checkbox, slider, width=450)
+				"widgets": widgetbox(slider, checkbox, width=450)
 		}
 
 @app.route("/wvdp/")

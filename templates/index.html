@@ -11,49 +11,77 @@
     }
     
     .container {
-    	width: 900px;
-    	margin: 0 auto;
+    	display: flex;
+    	width: 1500px;
+    	align-items: flex-start;
+    }
+    
+    .mega-header {
+    	font-size: 3em;
+    }
+    
+    .sub-header {
+    	font-size: 2em;
     }
     
     .header {
     	font-family: Helvetica;
-    	font-size: 5em;
     	font-weight: bolder;
     }
     
     .text {
     	font-family: Helvetica;
     	font-size: 1em;
+    	line-height: 1.75;
     }
     
     .figure-box {
-    	display: auto;
+    	width: 900px;
+    	position: -webkit-sticky;
+  		position: sticky;
+  		top: 0;
     }
     
     .text-box {
-    	padding-top: 3em;
-    	padding-bottom: 3em;
+    	flex-grow: 1;
     }
     
     .plot-box {
-    	float: left;
+    
+    }
+    
+    .widget-box {
+    	width: 450px;
+    	margin: 0 auto;
     }
     </style>
   </head>
   <body>
   	<div class="container">
-			<div class="header-box">
-				<span class="header">Causal Discovery <br/>on World Development <br/>Indices</span>
-			</div>
-			<div class="text-box">
-				<span class="text">
-					Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum bibendum lobortis nunc quis pellentesque. 
-					In et tortor sit amet libero aliquam cursus. Morbi ornare quam sed odio vulputate, quis rhoncus sem placerat. 
-				</span>
-			</div>
-			<div class="figure-box">
-			  <div class="plot-box">{{ widgets_div | safe }}</div>
+  		<div class="figure-box">
+			  <div class="widget-box">{{ widgets_div | safe }}</div>
 				<div class="plot-box">{{ graph_div | safe }}</div>
+			</div>
+  		<div class="text-box">
+  		  <h1 class="header mega-header">Causal Discovery <br/>on World Development <br/>Indices</h1>
+
+<p class="text">
+Rich datasets like the one on world development indices can lead to a paradox of choice. 
+When we had very little data on anything, we were more certain about what kind of questions 
+we should be asking because we had fewer questions that were answerable. We made a wish 
+on a monkey's paw and asked for more data, and we were granted a deluge of data so large 
+that we're behind on our ability to make sense of it, to meaningfully separate signal 
+from noise. When we're given a dataset, how do we decide which patterns matter and which 
+are probably a coincidence?
+</p>
+
+<p class="sub-header header">Correlation, causation</p>
+<p class="text">
+Our first instinct when we're handed a table of numeric data is often to mine for correlations. 
+
+
+</p>
+
 			</div>
 		</div>
     
