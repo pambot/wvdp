@@ -33,23 +33,24 @@ RADIUS = 0.15
 STEPS = 1000
 BACKGROUND = "#e0e0e0"
 
+EDGE_LABELS = ["correlation", "undirected causal", "directed causal", "genuine causal"]
 EDGE_STYLE = {
 		"correlation": {
 				"color": "#ffffff",
 				"width": 2,
 				"alpha": 0.3,
 		},
-		"causal-no-arrow": {
+		"undirected causal": {
 				"color": "#000000",
 				"width": 2,
 				"alpha": 0.3,
 		},
-		"causal-arrow": {
+		"directed causal": {
 				"color": "#000000",
 				"width": 3,
 				"alpha": 0.6,
 		},
-		"causal-genuine": {
+		"genuine causal": {
 				"color": "#000000",
 				"width": 6,
 				"alpha": 0.9,
@@ -123,7 +124,7 @@ def make_figure(D, pos):
 
 		# add directed edges
 		graph.edge_renderer.data_source.data = dict(
-				start=[], end=[], xs=[], ys=[], color=[], width=[], alpha=[], r=[], pval=[]
+				start=[], end=[], xs=[], ys=[], color=[], width=[], alpha=[], r=[], pval=[], type=[]
 		)
 
 		for e in D.edges(data=True):
@@ -140,20 +141,18 @@ def make_figure(D, pos):
 
 				if not d["causal"]:
 						kind = "correlation"
-						for s in EDGE_STYLE[kind].keys():
-								graph.edge_renderer.data_source.data[s].append(EDGE_STYLE[kind][s])
 				elif not d["directed"]:
-						kind = "causal-no-arrow"
-						for s in EDGE_STYLE[kind].keys():
-								graph.edge_renderer.data_source.data[s].append(EDGE_STYLE[kind][s])
+						kind = "undirected causal"
 				elif not d["genuine"]:
-						kind = "causal-arrow"
-						for s in EDGE_STYLE[kind].keys():
-								graph.edge_renderer.data_source.data[s].append(EDGE_STYLE[kind][s])
+						kind = "directed causal"
 				else:
-						kind = "causal-genuine"
-						for s in EDGE_STYLE[kind].keys():
-								graph.edge_renderer.data_source.data[s].append(EDGE_STYLE[kind][s])
+						kind = "genuine causal"
+				
+				for s in EDGE_STYLE[kind].keys():
+						graph.edge_renderer.data_source.data[s].append(EDGE_STYLE[kind][s])
+				
+				edge_type_index = {k: v for k, v in zip(EDGE_LABELS, range(len(EDGE_LABELS)))}
+				graph.edge_renderer.data_source.data['type'].append(edge_type_index[kind])
 
 		light_edge = MultiLine(line_width="width", line_color="color", line_alpha="alpha")
 		heavy_edge = MultiLine(line_width="width", line_color="color", line_alpha=1)
@@ -198,8 +197,8 @@ def make_figure(D, pos):
 
 		# widgets
 		checkbox = CheckboxButtonGroup(
-        labels=["correlation", "undirected causal", "directed causal", "genuine causal"], 
-        active=[0, 1, 2, 3]
+        labels=EDGE_LABELS, 
+        active=[edge_type_index[k] for k in EDGE_LABELS]
     )
 		slider = Slider(start=0.0, end=1.0, value=0.0, step=0.1, title="absolute correlation coefficient")
 		
@@ -212,20 +211,22 @@ def make_figure(D, pos):
 						slider=slider
 				), 
 				code="""
-						var s = graph.edge_renderer.data_source.data;
+						var e = graph.edge_renderer.data_source.data;
 						var o = edges_original.data;
+						var cb = checkbox.active;
 						for (var key in o) {
 								var tmp = [];
 								for (var i = 0; i < o['start'].length; ++i) {
-										if (Math.abs(o['r'][i]) > slider.value) {
-												tmp.push(o[key][i]);
+										if ((Math.abs(o['r'][i]) > slider.value) && (cb.indexOf(o['type'][i]) > -1)) {
+												tmp.push(o[key][i])
 										}
 								}
-								s[key] = tmp;
+								e[key] = tmp;
 						}
 						graph.edge_renderer.data_source.change.emit();
 		""")
 		slider.js_on_change("value", callback)
+		checkbox.js_on_change("active", callback)
 		
 		return {
 				"gplot": gplot, 
