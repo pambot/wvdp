@@ -52,8 +52,8 @@ EDGE_STYLE = {
 		},
 		"genuine causal": {
 				"color": "#000000",
-				"width": 5,
-				"alpha": 0.9,
+				"width": 3,
+				"alpha": 1,
 		},
 		
 }
@@ -124,7 +124,7 @@ def make_figure(D, pos):
 
 		# add directed edges
 		graph.edge_renderer.data_source.data = dict(
-				start=[], end=[], xs=[], ys=[], color=[], width=[], alpha=[], r=[], pval=[], type=[]
+				start=[], end=[], xs=[], ys=[], color=[], width=[], alpha=[], r=[], pval=[], type=[], b_arrow=[], e_arrow=[]
 		)
 
 		for e in D.edges(data=True):
@@ -148,6 +148,16 @@ def make_figure(D, pos):
 				else:
 						kind = "genuine causal"
 				
+				if d["directed"]:
+						graph.edge_renderer.data_source.data["e_arrow"].append(True)
+				else:
+						graph.edge_renderer.data_source.data["e_arrow"].append(False)
+
+				if d["both_arrows"]:
+						graph.edge_renderer.data_source.data["b_arrow"].append(True)
+				else:
+						graph.edge_renderer.data_source.data["b_arrow"].append(False)
+				
 				for s in EDGE_STYLE[kind].keys():
 						graph.edge_renderer.data_source.data[s].append(EDGE_STYLE[kind][s])
 				
@@ -162,24 +172,15 @@ def make_figure(D, pos):
 		graph.edge_renderer.selection_glyph = heavy_edge
 		graph.edge_renderer.nonselection_glyph = light_edge
 
-		
-		# 		for e, xs, ys in zip(D.edges(data=True),
-		# 												 graph.edge_renderer.data_source.data["xs"],
-		# 												 graph.edge_renderer.data_source.data["ys"]):
-		# 				n1, n2, data = e
-		# 				l1, l2 = pos[n1], pos[n2]
-		# 				x1, y1 = l1
-		# 				x2, y2 = l2
-		# 				if data["directed"]:
-		# 						os = nearest_offset(xs, ys, l2)
-		# 						arrow = VeeHead(fill_color=OUTLINE, line_color=None, size=20)
-		# 						gplot.add_layout(
-		# 								Arrow(end=arrow, x_start=xs[-os-1], y_start=ys[-os-1], x_end=xs[-os], y_end=ys[-os], line_color=None)
-		# 						)
-		# 						if data["both"]:
-		# 								gplot.add_layout(
-		# 										Arrow(end=arrow, x_start=xs[os+1], y_start=ys[os+1], x_end=xs[os], y_end=ys[os], line_color=None)
-		# 								)
+		# arrows
+		arrow = NormalHead(fill_color="#000000", line_color=None, size=8)
+		arrow_source = ColumnDataSource(dict(x_start=[], y_start=[], x_end=[], y_end=[]))
+		gplot.add_layout(
+				Arrow(
+						end=arrow, source=arrow_source,
+						x_start="x_start", y_start="y_start", x_end="x_end", y_end="y_end"
+				)
+		)
 
 		# add labels
 		p_ind = np.linspace(0, 1-1/len(pos), len(pos)) * np.pi * 2
@@ -215,23 +216,47 @@ def make_figure(D, pos):
 				args=dict(
 						graph=graph,
 						edges_original=edges_original, 
+						arrow_source=arrow_source,
 						checkbox=checkbox,
 						slider=slider
 				), 
 				code="""
 						var e = graph.edge_renderer.data_source.data;
+						var a = arrow_source.data;
 						var o = edges_original.data;
 						var cb = checkbox.active;
 						for (var key in o) {
-								var tmp = [];
+								var vals = [];
 								for (var i = 0; i < o['start'].length; ++i) {
 										if ((Math.abs(o['r'][i]) > slider.value) && (cb.indexOf(o['type'][i]) > -1)) {
-												tmp.push(o[key][i])
+												vals.push(o[key][i]);
 										}
 								}
-								e[key] = tmp;
+								e[key] = vals;
+						}
+						a['x_start'].length = 0;
+						a['y_start'].length = 0;
+						a['x_end'].length = 0;
+						a['y_end'].length = 0;
+						for (var i = 0; i < o['start'].length; ++i) {
+								if ((Math.abs(o['r'][i]) > slider.value) && (cb.indexOf(o['type'][i]) > -1)) {
+										if (o['e_arrow'][i] === true) {
+												var l = o['xs'][i].length;
+												a['x_start'].push(o['xs'][i][l - 2]);
+												a['y_start'].push(o['ys'][i][l - 2]);
+												a['x_end'].push(o['xs'][i][l - 1]);
+												a['y_end'].push(o['ys'][i][l - 1]);
+										}
+										if (o['b_arrow'][i] === true) {
+												a['x_start'].push(o['xs'][i][1]);
+												a['y_start'].push(o['ys'][i][1]);
+												a['x_end'].push(o['xs'][i][0]);
+												a['y_end'].push(o['ys'][i][0]);
+										}
+								}
 						}
 						graph.edge_renderer.data_source.change.emit();
+						arrow_source.change.emit();
 		""")
 		slider.js_on_change("value", callback)
 		checkbox.js_on_change("active", callback)
