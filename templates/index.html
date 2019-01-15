@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>WVDP</title>
+    <title>Causal Discovery on World Development Indices</title>
     <link href="http://cdn.pydata.org/bokeh/release/bokeh-1.0.4.min.css" rel="stylesheet">
     <link href="http://cdn.pydata.org/bokeh/release/bokeh-widgets-1.0.4.min.css" rel="stylesheet">
     <style>
@@ -22,6 +22,8 @@
     
     .sub-header {
     	font-size: 2em;
+    	margin-top: 1em;
+    	margin-bottom: 0.75em;
     }
     
     .header {
@@ -33,6 +35,8 @@
     	font-family: Helvetica;
     	font-size: 1em;
     	line-height: 1.75;
+    	margin-top: 0.75em;
+    	margin-bottom: 0.75em;
     }
     
     .figure-box {
@@ -75,7 +79,7 @@ from noise. When we're given a dataset, how do we decide which patterns matter a
 are probably a coincidence?
 </p>
 
-<p class="sub-header header">Correlation, causation</p>
+<p class="sub-header header">Correlation</p>
 <p class="text">
 Our first instinct when we're handed a table of numeric data is often to mine for correlations. 
 

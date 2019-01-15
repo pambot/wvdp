@@ -88,6 +88,7 @@ def make_figure(D, pos):
 		hover = HoverTool(tooltips=[
 				("node", "@start"),
 				("node", "@end"),
+				("type", "@type_name"),
 				("pearson", "@r{0.3f}"),
 				("p-value", "@pval"),
 		])
@@ -124,7 +125,7 @@ def make_figure(D, pos):
 
 		# add directed edges
 		graph.edge_renderer.data_source.data = dict(
-				start=[], end=[], xs=[], ys=[], color=[], width=[], alpha=[], r=[], pval=[], type=[], b_arrow=[], e_arrow=[]
+				start=[], end=[], xs=[], ys=[], color=[], width=[], alpha=[], r=[], pval=[], type=[], type_name = [], b_arrow=[], e_arrow=[]
 		)
 
 		for e in D.edges(data=True):
@@ -163,6 +164,7 @@ def make_figure(D, pos):
 				
 				edge_type_index = {k: v for k, v in zip(EDGE_LABELS, range(len(EDGE_LABELS)))}
 				graph.edge_renderer.data_source.data['type'].append(edge_type_index[kind])
+				graph.edge_renderer.data_source.data['type_name'].append(kind)
 
 		light_edge = MultiLine(line_width="width", line_color="color", line_alpha="alpha")
 		heavy_edge = MultiLine(line_width="width", line_color="color", line_alpha=1)
