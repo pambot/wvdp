@@ -1,13 +1,10 @@
 import math
+import os
 import copy
 import json
 import numpy as np
 import pandas as pd
 import networkx as nx
-import matplotlib.pyplot as plt
-
-from matplotlib.cm import get_cmap
-from matplotlib.colors import rgb2hex
 
 from bokeh.io import show, output_notebook, output_file
 from bokeh.plotting import figure
@@ -26,6 +23,7 @@ from networkx.readwrite.json_graph import node_link_graph
 import pickle
 
 from flask import Flask, render_template
+
 
 app = Flask(__name__)
 
@@ -272,11 +270,10 @@ def make_figure(D, pos):
 
 @app.route("/wvdp/")
 def chart():
-		with open("data/graph", "rb") as f:
-				D = node_link_graph(pickle.load(f))
-
-		with open("data/pos", "rb") as f:
-				pos = pickle.load(f)
+		from data import graph, pos
+		
+		D = node_link_graph(graph)
+		pos = pos
 		
 		f = make_figure(D, pos)
 		script, (graph_div, widgets_div) = components([f["gplot"], f["widgets"]])
@@ -287,5 +284,6 @@ def chart():
 		)
 
 if __name__ == "__main__":
-		app.run(debug=True)
+		port = int(os.environ.get('PORT', 5000))
+		app.run(host='0.0.0.0', port=port)
 
