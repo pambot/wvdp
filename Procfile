@@ -1,1 +1,1 @@
-web: gunicorn wvdp:app --preload
+web: python wvdp.py $PORT
