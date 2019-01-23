@@ -28,60 +28,10 @@ from flask import Flask, render_template
 app = Flask(__name__)
 
 RADIUS = 0.15
-STEPS = 1000
 BACKGROUND = "#e0e0e0"
-
 EDGE_LABELS = ["correlation", "undirected causal", "directed causal", "genuine causal"]
-EDGE_STYLE = {
-		"correlation": {
-				"color": "#ffffff",
-				"width": 2,
-				"alpha": 0.3,
-		},
-		"undirected causal": {
-				"color": "#000000",
-				"width": 2,
-				"alpha": 0.3,
-		},
-		"directed causal": {
-				"color": "#000000",
-				"width": 3,
-				"alpha": 0.6,
-		},
-		"genuine causal": {
-				"color": "#000000",
-				"width": 3,
-				"alpha": 1,
-		},
-		
-}
 
-def dist(l1, l2):
-    x1, y1 = l1
-    x2, y2 = l2
-    return ((y2 - y1)**2 + (x2 - x1)**2)**0.5
-
-def bezier(l1, l2, b):
-    x1, y1 = l1
-    x2, y2 = l2
-    d = dist(l1, l2)
-    t = b * (1 + d)
-    steps = [i/STEPS for i in range(STEPS)]
-    xs = [(1-s)**t*x1 + s**t*x2 for s in steps]
-    ys = [(1-s)**t*y1 + s**t*y2 for s in steps]
-    return xs, ys
-
-def colormap(num):
-    colors = ["#f7c031", "#ef4837", "#91b5bb", "#526354", "#fecacb"]
-    return list(colors * 100)[:num]
-
-def nearest_offset(xs, ys, centroid):
-    for i, (x, y) in enumerate(zip(xs[::-1], ys[::-1])):
-        if dist(centroid, (x, y)) > RADIUS-0.075:
-            break
-    return i
-
-def make_figure(D, pos):
+def make_figure(nodes, edges, correlation_edges, pos):
 		
 		hover = HoverTool(tooltips=[
 				("node", "@start"),
@@ -110,11 +60,8 @@ def make_figure(D, pos):
 		light_node = Ellipse(height=RADIUS, width=RADIUS, fill_color="color", line_color="#000000", line_width=5)
 		heavy_node = Ellipse(height=RADIUS, width=RADIUS, fill_color="color", line_color="#000000", line_width=7)
 		
-		graph.node_renderer.data_source.add(list(pos.keys()), "index")
-		graph.node_renderer.data_source.add(list(pos.keys()), "label")
-		graph.node_renderer.data_source.add(colormap(len(pos)), "color")
-		graph.node_renderer.data_source.add([pos[n][0] for n in pos.keys()], "x")
-		graph.node_renderer.data_source.add([pos[n][1] for n in pos.keys()], "y")
+		for k in nodes:
+				graph.node_renderer.data_source.add(nodes[k], k)
 		
 		graph.node_renderer.glyph = light_node
 		graph.node_renderer.hover_glyph = heavy_node
@@ -122,47 +69,8 @@ def make_figure(D, pos):
 		graph.node_renderer.nonselection_glyph = light_node
 
 		# add directed edges
-		graph.edge_renderer.data_source.data = dict(
-				start=[], end=[], xs=[], ys=[], color=[], width=[], alpha=[], r=[], pval=[], type=[], type_name = [], b_arrow=[], e_arrow=[]
-		)
-
-		for e in D.edges(data=True):
-				n1, n2, d = e
-				l1, l2 = pos[n1], pos[n2]
-				xs, ys = bezier(l1, l2, 1)
-				os = nearest_offset(xs, ys, l2)
-				graph.edge_renderer.data_source.data["start"].append(n1)
-				graph.edge_renderer.data_source.data["end"].append(n2)
-				graph.edge_renderer.data_source.data["xs"].append(xs[os:-os])
-				graph.edge_renderer.data_source.data["ys"].append(ys[os:-os])
-				graph.edge_renderer.data_source.data["r"].append(d["r"])
-				graph.edge_renderer.data_source.data["pval"].append(d["pval"])
-
-				if not d["causal"]:
-						kind = "correlation"
-				elif not d["directed"]:
-						kind = "undirected causal"
-				elif not d["genuine"]:
-						kind = "directed causal"
-				else:
-						kind = "genuine causal"
-				
-				if d["directed"]:
-						graph.edge_renderer.data_source.data["e_arrow"].append(True)
-				else:
-						graph.edge_renderer.data_source.data["e_arrow"].append(False)
-
-				if d["both_arrows"]:
-						graph.edge_renderer.data_source.data["b_arrow"].append(True)
-				else:
-						graph.edge_renderer.data_source.data["b_arrow"].append(False)
-				
-				for s in EDGE_STYLE[kind].keys():
-						graph.edge_renderer.data_source.data[s].append(EDGE_STYLE[kind][s])
-				
-				edge_type_index = {k: v for k, v in zip(EDGE_LABELS, range(len(EDGE_LABELS)))}
-				graph.edge_renderer.data_source.data['type'].append(edge_type_index[kind])
-				graph.edge_renderer.data_source.data['type_name'].append(kind)
+		for k in correlation_edges:
+				graph.edge_renderer.data_source.add(correlation_edges[k], k)
 
 		light_edge = MultiLine(line_width="width", line_color="color", line_alpha="alpha")
 		heavy_edge = MultiLine(line_width="width", line_color="color", line_alpha=1)
@@ -187,7 +95,7 @@ def make_figure(D, pos):
 		xr = 1.1 * np.cos(p_ind)
 		yr = 1.1 * np.sin(p_ind)
 		rad = np.arctan2(yr, xr)
-		gplot.text(xr, yr, list(D.nodes()), angle=rad,
+		gplot.text(xr, yr, nodes["index"], angle=rad,
 				text_font_size="9pt", text_align="left", text_baseline="middle")
 
 		# render
@@ -196,21 +104,15 @@ def make_figure(D, pos):
 		graph.selection_policy = EdgesAndLinkedNodes()
 
 		# widgets
-		edges_original = ColumnDataSource(copy.deepcopy(graph.edge_renderer.data_source.data))
-
-		checkbox = CheckboxButtonGroup(
-        labels=EDGE_LABELS, 
-        active=[0]
-    )
-
-		default = graph.edge_renderer.data_source.data
-		for k in edges_original.data:
-				default[k] = [
-						edges_original.data[k][i] for i, t in enumerate(edges_original.data['type']) if t == 0
-				]
+		edges_original = ColumnDataSource(edges)
 
 		slider = Slider(start=0.0, end=1.0, value=0.0, step=0.1, 
 				title="absolute correlation coefficient is greater than")
+
+		checkbox = CheckboxButtonGroup(
+				labels=EDGE_LABELS, 
+				active=[0]
+		)
 
 		callback = CustomJS(
 				args=dict(
@@ -240,14 +142,14 @@ def make_figure(D, pos):
 						a['y_end'].length = 0;
 						for (var i = 0; i < o['start'].length; ++i) {
 								if ((Math.abs(o['r'][i]) > slider.value) && (cb.indexOf(o['type'][i]) > -1)) {
-										if (o['e_arrow'][i] === true) {
+										if (o['e_arrow'][i] === 1) {
 												var l = o['xs'][i].length;
 												a['x_start'].push(o['xs'][i][l - 2]);
 												a['y_start'].push(o['ys'][i][l - 2]);
 												a['x_end'].push(o['xs'][i][l - 1]);
 												a['y_end'].push(o['ys'][i][l - 1]);
 										}
-										if (o['b_arrow'][i] === true) {
+										if (o['b_arrow'][i] === 1) {
 												a['x_start'].push(o['xs'][i][1]);
 												a['y_start'].push(o['ys'][i][1]);
 												a['x_end'].push(o['xs'][i][0]);
@@ -270,12 +172,9 @@ def make_figure(D, pos):
 
 @app.route("/wvdp/")
 def chart():
-		from data import graph, pos
+		from data import nodes, edges, correlation_edges, pos
 		
-		D = node_link_graph(graph)
-		pos = pos
-		
-		f = make_figure(D, pos)
+		f = make_figure(nodes, edges, correlation_edges, pos)
 		script, (graph_div, widgets_div) = components([f["gplot"], f["widgets"]])
 		return render_template("index.html", 
 				graph_div=graph_div,
@@ -284,6 +183,6 @@ def chart():
 		)
 
 if __name__ == "__main__":
-		port = int(os.environ.get('PORT', 5000))
-		app.run(host='0.0.0.0', port=port)
+		port = int(os.environ.get("PORT", 5000))
+		app.run(host="0.0.0.0", port=port)
 
