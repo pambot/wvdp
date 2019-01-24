@@ -3,8 +3,6 @@ import os
 import copy
 import json
 import numpy as np
-import pandas as pd
-import networkx as nx
 
 from bokeh.io import show, output_notebook, output_file
 from bokeh.plotting import figure
@@ -18,9 +16,6 @@ from bokeh.models.widgets import *
 from bokeh.layouts import widgetbox
 from bokeh.resources import CDN
 from bokeh.embed import components
-
-from networkx.readwrite.json_graph import node_link_graph
-import pickle
 
 from flask import Flask, render_template
 
@@ -183,7 +178,5 @@ def chart():
   )
 
 if __name__ == "__main__":
-  #   port = int(os.environ.get("PORT", 5000))
-  #   app.run(host="0.0.0.0", port=port)
-  app.run()
+  app.run(host="0.0.0.0", port=80)
 

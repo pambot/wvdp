@@ -1,6 +1,4 @@
-pandas==0.23.1
 numpy==1.14.5
 bokeh==1.0.4
-networkx==2.2
 Flask==1.0.2
-gunicorn
+gunicorn==19.9.0
