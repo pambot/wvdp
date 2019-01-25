@@ -8,7 +8,7 @@ from bokeh.io import show, output_notebook, output_file
 from bokeh.plotting import figure
 from bokeh.models import GraphRenderer, StaticLayoutProvider, HoverTool, TapTool, CustomJS
 from bokeh.models.sources import ColumnDataSource
-from bokeh.models.graphs import EdgesAndLinkedNodes
+from bokeh.models.graphs import *
 from bokeh.models.glyphs import *
 from bokeh.models.arrow_heads import *
 from bokeh.models.annotations import *
@@ -28,26 +28,9 @@ EDGE_LABELS = ["correlation", "undirected causal", "directed causal", "genuine c
 
 def make_figure(nodes, edges, correlation_edges, pos):
   
-  hover = HoverTool(tooltips=[
-    ("node", "@start"),
-    ("node", "@end"),
-    ("type", "@type_name"),
-    ("pearson", "@r{0.3f}"),
-    ("p-value", "@pval"),
-  ])
-  
   # define gplot
   gplot = figure(title=None, x_range=(-2, 2), y_range=(-2, 2), tools="reset,save",
          plot_width=900, plot_height=900, match_aspect=False)
-  gplot.background_fill_color = BACKGROUND
-  gplot.xgrid.grid_line_color = None
-  gplot.ygrid.grid_line_color = None
-  gplot.axis.visible = False
-  gplot.add_tools(hover, TapTool())
-  gplot.toolbar.logo = None
-  gplot.toolbar_location = None
-  gplot.border_fill_color = None
-  gplot.outline_line_color = None
 
   graph = GraphRenderer()
 
@@ -64,6 +47,8 @@ def make_figure(nodes, edges, correlation_edges, pos):
   graph.node_renderer.nonselection_glyph = light_node
 
   # add directed edges
+  graph.edge_renderer.name = "edges"
+  
   for k in correlation_edges:
     graph.edge_renderer.data_source.add(correlation_edges[k], k)
 
@@ -72,7 +57,7 @@ def make_figure(nodes, edges, correlation_edges, pos):
   
   graph.edge_renderer.glyph = light_edge
   graph.edge_renderer.hover_glyph = heavy_edge
-  graph.edge_renderer.selection_glyph = heavy_edge
+  graph.edge_renderer.selection_glyph = light_edge
   graph.edge_renderer.nonselection_glyph = light_edge
 
   # arrows
@@ -96,7 +81,7 @@ def make_figure(nodes, edges, correlation_edges, pos):
   # render
   graph.layout_provider = StaticLayoutProvider(graph_layout=pos)
   graph.inspection_policy = EdgesAndLinkedNodes()
-  graph.selection_policy = EdgesAndLinkedNodes()
+  graph.selection_policy = NodesAndLinkedEdges()
 
   # widgets
   edges_original = ColumnDataSource(edges)
@@ -109,7 +94,7 @@ def make_figure(nodes, edges, correlation_edges, pos):
     active=[0]
   )
 
-  callback = CustomJS(
+  widget_callback = CustomJS(
     args=dict(
       graph=graph,
       edges_original=edges_original, 
@@ -122,10 +107,11 @@ def make_figure(nodes, edges, correlation_edges, pos):
       var a = arrow_source.data;
       var o = edges_original.data;
       var cb = checkbox.active;
+      var sv = slider.value;
       for (var key in o) {
         var vals = [];
         for (var i = 0; i < o['start'].length; ++i) {
-          if ((Math.abs(o['r'][i]) > slider.value) && (cb.indexOf(o['type'][i]) > -1)) {
+          if ((Math.abs(o['r'][i]) > sv) && (cb.indexOf(o['type'][i]) > -1)) {
             vals.push(o[key][i]);
           }
         }
@@ -136,7 +122,7 @@ def make_figure(nodes, edges, correlation_edges, pos):
       a['x_end'].length = 0;
       a['y_end'].length = 0;
       for (var i = 0; i < o['start'].length; ++i) {
-        if ((Math.abs(o['r'][i]) > slider.value) && (cb.indexOf(o['type'][i]) > -1)) {
+        if ((Math.abs(o['r'][i]) > sv) && (cb.indexOf(o['type'][i]) > -1)) {
           if (o['e_arrow'][i] === 1) {
             var l = o['xs'][i].length;
             a['x_start'].push(o['xs'][i][l - 2]);
@@ -155,9 +141,83 @@ def make_figure(nodes, edges, correlation_edges, pos):
       graph.edge_renderer.data_source.change.emit();
       arrow_source.change.emit();
   """)
-  slider.js_on_change("value", callback)
-  checkbox.js_on_change("active", callback)
+  slider.js_on_change("value", widget_callback)
+  checkbox.js_on_change("active", widget_callback)
   
+  node_callback = CustomJS(
+  	args=dict(
+  		graph=graph,
+  		edges_original=edges_original,
+  		arrow_source=arrow_source,
+  		checkbox=checkbox,
+      slider=slider
+  	),
+  	code="""
+  	  var e = graph.edge_renderer.data_source.data;
+  	  var n = graph.node_renderer.data_source.data;
+      var a = arrow_source.data;
+      var o = edges_original.data;
+      var cb = checkbox.active;
+      var sv = slider.value;
+      if (cb_obj.indices.length > 0) {
+				var nn = n['index'][cb_obj.indices[0]];
+				for (var key in o) {
+					var vals = [];
+					for (var i = 0; i < o['start'].length; ++i) {
+						if ((o['start'][i] == nn || o['end'][i] == nn) && (Math.abs(o['r'][i]) > sv) && (cb.indexOf(o['type'][i]) > -1)) {
+							vals.push(o[key][i]);
+						}
+					}
+					e[key] = vals;
+				}
+				a['x_start'].length = 0;
+				a['y_start'].length = 0;
+				a['x_end'].length = 0;
+				a['y_end'].length = 0;
+				for (var i = 0; i < o['start'].length; ++i) {
+					if ((o['start'][i] == nn || o['end'][i] == nn) && (Math.abs(o['r'][i]) > sv) && (cb.indexOf(o['type'][i]) > -1)) {
+						if (o['e_arrow'][i] === 1) {
+							var l = o['xs'][i].length;
+							a['x_start'].push(o['xs'][i][l - 2]);
+							a['y_start'].push(o['ys'][i][l - 2]);
+							a['x_end'].push(o['xs'][i][l - 1]);
+							a['y_end'].push(o['ys'][i][l - 1]);
+						}
+						if (o['b_arrow'][i] === 1) {
+							a['x_start'].push(o['xs'][i][1]);
+							a['y_start'].push(o['ys'][i][1]);
+							a['x_end'].push(o['xs'][i][0]);
+							a['y_end'].push(o['ys'][i][0]);
+						}
+					}
+				}
+			}
+      graph.edge_renderer.data_source.change.emit();
+      arrow_source.change.emit();
+  """)
+  
+  graph.node_renderer.data_source.selected.js_on_change("indices", node_callback)
+  
+  hover = HoverTool(
+    tooltips=[
+      ("node", "@start"),
+      ("node", "@end"),
+      ("type", "@type_name"),
+      ("pearson", "@r{0.3f}"),
+      ("p-value", "@pval"),
+    ],
+    renderers=[graph]
+  )
+  
+  gplot.background_fill_color = BACKGROUND
+  gplot.xgrid.grid_line_color = None
+  gplot.ygrid.grid_line_color = None
+  gplot.axis.visible = False
+  gplot.add_tools(hover, TapTool())
+  gplot.toolbar.logo = None
+  gplot.toolbar_location = None
+  gplot.border_fill_color = None
+  gplot.outline_line_color = None
   gplot.renderers.append(graph)
   
   return {
@@ -178,5 +238,6 @@ def chart():
   )
 
 if __name__ == "__main__":
-  app.run(host="0.0.0.0", port=80)
+  #app.run(host="0.0.0.0", port=80)
+  app.run(debug=True)
 
