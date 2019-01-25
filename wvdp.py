@@ -94,7 +94,7 @@ def make_figure(nodes, edges, correlation_edges, pos):
     active=[0]
   )
 
-  widget_callback = CustomJS(
+  callback = CustomJS(
     args=dict(
       graph=graph,
       edges_original=edges_original, 
@@ -103,64 +103,15 @@ def make_figure(nodes, edges, correlation_edges, pos):
       slider=slider
     ), 
     code="""
-      var e = graph.edge_renderer.data_source.data;
-      var a = arrow_source.data;
-      var o = edges_original.data;
-      var cb = checkbox.active;
-      var sv = slider.value;
-      for (var key in o) {
-        var vals = [];
-        for (var i = 0; i < o['start'].length; ++i) {
-          if ((Math.abs(o['r'][i]) > sv) && (cb.indexOf(o['type'][i]) > -1)) {
-            vals.push(o[key][i]);
-          }
-        }
-        e[key] = vals;
-      }
-      a['x_start'].length = 0;
-      a['y_start'].length = 0;
-      a['x_end'].length = 0;
-      a['y_end'].length = 0;
-      for (var i = 0; i < o['start'].length; ++i) {
-        if ((Math.abs(o['r'][i]) > sv) && (cb.indexOf(o['type'][i]) > -1)) {
-          if (o['e_arrow'][i] === 1) {
-            var l = o['xs'][i].length;
-            a['x_start'].push(o['xs'][i][l - 2]);
-            a['y_start'].push(o['ys'][i][l - 2]);
-            a['x_end'].push(o['xs'][i][l - 1]);
-            a['y_end'].push(o['ys'][i][l - 1]);
-          }
-          if (o['b_arrow'][i] === 1) {
-            a['x_start'].push(o['xs'][i][1]);
-            a['y_start'].push(o['ys'][i][1]);
-            a['x_end'].push(o['xs'][i][0]);
-            a['y_end'].push(o['ys'][i][0]);
-          }
-        }
-      }
-      graph.edge_renderer.data_source.change.emit();
-      arrow_source.change.emit();
-  """)
-  slider.js_on_change("value", widget_callback)
-  checkbox.js_on_change("active", widget_callback)
-  
-  node_callback = CustomJS(
-  	args=dict(
-  		graph=graph,
-  		edges_original=edges_original,
-  		arrow_source=arrow_source,
-  		checkbox=checkbox,
-      slider=slider
-  	),
-  	code="""
   	  var e = graph.edge_renderer.data_source.data;
   	  var n = graph.node_renderer.data_source.data;
       var a = arrow_source.data;
       var o = edges_original.data;
       var cb = checkbox.active;
       var sv = slider.value;
-      if (cb_obj.indices.length > 0) {
-				var nn = n['index'][cb_obj.indices[0]];
+      var ns = graph.node_renderer.data_source.selected.indices;
+      if (ns.length > 0) {
+				var nn = n['index'][ns[0]];
 				for (var key in o) {
 					var vals = [];
 					for (var i = 0; i < o['start'].length; ++i) {
@@ -195,8 +146,10 @@ def make_figure(nodes, edges, correlation_edges, pos):
       graph.edge_renderer.data_source.change.emit();
       arrow_source.change.emit();
   """)
+  slider.js_on_change("value", callback)
+  checkbox.js_on_change("active", callback)
   
-  graph.node_renderer.data_source.selected.js_on_change("indices", node_callback)
+  graph.node_renderer.data_source.selected.js_on_change("indices", callback)
   
   hover = HoverTool(
     tooltips=[
