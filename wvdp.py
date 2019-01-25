@@ -18,6 +18,9 @@ from bokeh.resources import CDN
 from bokeh.embed import components
 
 from flask import Flask, render_template
+from tornado.wsgi import WSGIContainer
+from tornado.ioloop import IOLoop
+from tornado.web import FallbackHandler, RequestHandler, Application
 
 
 app = Flask(__name__)
@@ -103,77 +106,77 @@ def make_figure(nodes, edges, correlation_edges, pos):
       slider=slider
     ), 
     code="""
-  	  var e = graph.edge_renderer.data_source.data;
-  	  var n = graph.node_renderer.data_source.data;
+      var e = graph.edge_renderer.data_source.data;
+      var n = graph.node_renderer.data_source.data;
       var a = arrow_source.data;
       var o = edges_original.data;
       var cb = checkbox.active;
       var sv = slider.value;
       var ns = graph.node_renderer.data_source.selected.indices;
       if (ns.length > 0) {
-				var nn = n['index'][ns[0]];
-				for (var key in o) {
-					var vals = [];
-					for (var i = 0; i < o['start'].length; ++i) {
-						if ((o['start'][i] == nn || o['end'][i] == nn) && (Math.abs(o['r'][i]) > sv) && (cb.indexOf(o['type'][i]) > -1)) {
-							vals.push(o[key][i]);
-						}
-					}
-					e[key] = vals;
-				}
-				a['x_start'].length = 0;
-				a['y_start'].length = 0;
-				a['x_end'].length = 0;
-				a['y_end'].length = 0;
-				for (var i = 0; i < o['start'].length; ++i) {
-					if ((o['start'][i] == nn || o['end'][i] == nn) && (Math.abs(o['r'][i]) > sv) && (cb.indexOf(o['type'][i]) > -1)) {
-						if (o['e_arrow'][i] === 1) {
-							var l = o['xs'][i].length;
-							a['x_start'].push(o['xs'][i][l - 2]);
-							a['y_start'].push(o['ys'][i][l - 2]);
-							a['x_end'].push(o['xs'][i][l - 1]);
-							a['y_end'].push(o['ys'][i][l - 1]);
-						}
-						if (o['b_arrow'][i] === 1) {
-							a['x_start'].push(o['xs'][i][1]);
-							a['y_start'].push(o['ys'][i][1]);
-							a['x_end'].push(o['xs'][i][0]);
-							a['y_end'].push(o['ys'][i][0]);
-						}
-					}
-				}
-			} else {
-					for (var key in o) {
-					var vals = [];
-					for (var i = 0; i < o['start'].length; ++i) {
-						if ((Math.abs(o['r'][i]) > sv) && (cb.indexOf(o['type'][i]) > -1)) {
-							vals.push(o[key][i]);
-						}
-					}
-					e[key] = vals;
-				}
-				a['x_start'].length = 0;
-				a['y_start'].length = 0;
-				a['x_end'].length = 0;
-				a['y_end'].length = 0;
-				for (var i = 0; i < o['start'].length; ++i) {
-					if ((Math.abs(o['r'][i]) > sv) && (cb.indexOf(o['type'][i]) > -1)) {
-						if (o['e_arrow'][i] === 1) {
-							var l = o['xs'][i].length;
-							a['x_start'].push(o['xs'][i][l - 2]);
-							a['y_start'].push(o['ys'][i][l - 2]);
-							a['x_end'].push(o['xs'][i][l - 1]);
-							a['y_end'].push(o['ys'][i][l - 1]);
-						}
-						if (o['b_arrow'][i] === 1) {
-							a['x_start'].push(o['xs'][i][1]);
-							a['y_start'].push(o['ys'][i][1]);
-							a['x_end'].push(o['xs'][i][0]);
-							a['y_end'].push(o['ys'][i][0]);
-						}
-					}
-				}
-			}
+        var nn = n['index'][ns[0]];
+        for (var key in o) {
+          var vals = [];
+          for (var i = 0; i < o['start'].length; ++i) {
+            if ((o['start'][i] == nn || o['end'][i] == nn) && (Math.abs(o['r'][i]) > sv) && (cb.indexOf(o['type'][i]) > -1)) {
+              vals.push(o[key][i]);
+            }
+          }
+          e[key] = vals;
+        }
+        a['x_start'].length = 0;
+        a['y_start'].length = 0;
+        a['x_end'].length = 0;
+        a['y_end'].length = 0;
+        for (var i = 0; i < o['start'].length; ++i) {
+          if ((o['start'][i] == nn || o['end'][i] == nn) && (Math.abs(o['r'][i]) > sv) && (cb.indexOf(o['type'][i]) > -1)) {
+            if (o['e_arrow'][i] === 1) {
+              var l = o['xs'][i].length;
+              a['x_start'].push(o['xs'][i][l - 2]);
+              a['y_start'].push(o['ys'][i][l - 2]);
+              a['x_end'].push(o['xs'][i][l - 1]);
+              a['y_end'].push(o['ys'][i][l - 1]);
+            }
+            if (o['b_arrow'][i] === 1) {
+              a['x_start'].push(o['xs'][i][1]);
+              a['y_start'].push(o['ys'][i][1]);
+              a['x_end'].push(o['xs'][i][0]);
+              a['y_end'].push(o['ys'][i][0]);
+            }
+          }
+        }
+      } else {
+          for (var key in o) {
+          var vals = [];
+          for (var i = 0; i < o['start'].length; ++i) {
+            if ((Math.abs(o['r'][i]) > sv) && (cb.indexOf(o['type'][i]) > -1)) {
+              vals.push(o[key][i]);
+            }
+          }
+          e[key] = vals;
+        }
+        a['x_start'].length = 0;
+        a['y_start'].length = 0;
+        a['x_end'].length = 0;
+        a['y_end'].length = 0;
+        for (var i = 0; i < o['start'].length; ++i) {
+          if ((Math.abs(o['r'][i]) > sv) && (cb.indexOf(o['type'][i]) > -1)) {
+            if (o['e_arrow'][i] === 1) {
+              var l = o['xs'][i].length;
+              a['x_start'].push(o['xs'][i][l - 2]);
+              a['y_start'].push(o['ys'][i][l - 2]);
+              a['x_end'].push(o['xs'][i][l - 1]);
+              a['y_end'].push(o['ys'][i][l - 1]);
+            }
+            if (o['b_arrow'][i] === 1) {
+              a['x_start'].push(o['xs'][i][1]);
+              a['y_start'].push(o['ys'][i][1]);
+              a['x_end'].push(o['xs'][i][0]);
+              a['y_end'].push(o['ys'][i][0]);
+            }
+          }
+        }
+      }
       graph.edge_renderer.data_source.change.emit();
       arrow_source.change.emit();
   """)
@@ -220,7 +223,19 @@ def chart():
     script=script,
   )
 
+class MainHandler(RequestHandler):
+	def get(self):
+		self.write("Tornado")
+
+tr = WSGIContainer(app)
+
+application = Application([
+    (r"/tornado", MainHandler),
+    (r".*", FallbackHandler, dict(fallback=tr)),
+])
+
 if __name__ == "__main__":
-  #app.run(host="0.0.0.0", port=80)
-  app.run(debug=True)
+    application.listen(80, address="0.0.0.0")
+    IOLoop.instance().start()
+
 

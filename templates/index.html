@@ -9,6 +9,9 @@
     	background-color: #e0e0e0;
     	padding: 3em;
     }
+    a {
+			color: #000000;
+		}
     
     .container {
     	display: flex;
@@ -58,6 +61,10 @@
     	width: 450px;
     	margin: 0 auto;
     }
+    
+    .logo-box {
+    	display: flex;
+    }
     </style>
   </head>
   <body>
@@ -79,46 +86,46 @@ one indicator to "lead" to another?
 <p class="sub-header header">Correlation</p>
 <p class="text">
 When we think of exploring index data, we often think of looking at correlations - does an 
-increase in something lead to an increase or decrease in something else? Or is there no 
+increase in one indicator lead to an increase or decrease in another? Or is there no 
 pattern in sight? 29 world development indices blow up into 406 pairwise comparisons - 
 <b>explore some of the correlations yourself by hovering over edges.</b>
 </p>
 
 <p class="sub-header header">Noise</p>
 <p class="text">
-Trying to pick out one particular edge in a graph of all possible connections can feel as 
-frustrating as trying to decide which questions to ask of your data from the space of all 
-possible questions. <b>Make things easier on yourself by filtering the absolute value of 
-the correlation coefficients to get rid of the very weak correlations.</b>
+To get meaning from data, we need a way to filter it for what we want to see. <b>Click 
+on an indicator node to see only the connections associated with it.</b> Most pairwise 
+comparisons don't yield any significant patterns. <b>Use the slider to filter out weak 
+correlations.</b> When you're done selecting a single node, <b>click outside of the node 
+to unselect it.</b>
 </p>
 
 <p class="sub-header header">Causation</p>
 <p class="text">
-Everyone who works with data has heard the mantra: correlation does not equal causation. 
-But - without proving anything <i>per se</i> - what if you could infer causation out of a 
-network of correlations? Two correlations don't necessarily mean anything, but three 
-correlations start to give you a basis for comparisons. For example, consider three variables: 
-cigarettes per day, incidence of lung cancer, and some kind of addictive personality quotient. 
-All three are positively correlated with each other, but you notice that controlling for 
-cigarettes per day actually makes the association between lung cancer and having an addictive 
-personality just about random. This is means having an addictive personality will only 
-lead to lung cancer if it leads you to smoking a lot, and from that, you can now draw a 
-causal edge from smoking more cigarettes a day to getting lung cancer. <b>Running the world 
-development indices through a causal discovery algorithm (IC) reveals a number of interesting, 
-potentially causal, relationships.</b> <i>Caveat emptor</i>, though, this doesn't prove anything, 
-it's just a way for networks of conditional probabilities to point your experiments in the 
-right direction.
+Correlation does not equal causation, but what if a network of correlations could highlight 
+some potential causal relationships? Using the <a href="https://github.com/akelleh/causality">
+IC* algorithm</a>, we can test if any two indicators are still dependent on each other even 
+after factoring out all the surrounding indicators. When all the networks that fit the data 
+can agree on a causal direction, we can draw an arrow, but if they cannot, we leave it as 
+an undirected edge. <b>Browse the categories of inferred causal edges using the selection 
+boxes.</b>
 </p>
 
 <p class="sub-header header">Meaning</p>
 <p class="text">
-So what does it mean for an increase in school life expectancy to lead to an increase in the 
-human development index or for there to be no significant causal connections between the 
-percent of women MPs and the other indices? Honestly, it's hard to say. But if you're going 
-to ask questions on a limited bandwidth, the black edges aren't a bad place to start.
+How do we go from browsing data to finding meaning? We can use this spider's web of 
+correlations as a launching point, but ultimately meaning will come from in-depth investigations 
+that look at the people behind the numbers. If you're curious about inferring causal networks, 
+there are great <a href="https://www.stat.cmu.edu/~cshalizi/uADA/12/lectures/ch25.pdf">
+resources</a> online.
 </p>
 
-<img src="https://wdvp.worldgovernmentsummit.org/assets/img/logo-IDVA.png">
+<br><br>
+
+<div class="logo-box">
+	<a href="https://wdvp.worldgovernmentsummit.org/" target="_blank"><img src="https://wdvp.worldgovernmentsummit.org/assets/img/logo-IDVA.png"></a>
+	<a href="https://bokeh.pydata.org/en/latest/" target="_blank"><img src="https://bokeh.pydata.org/en/latest/_static/images/logo.png"></a>
+</div>
 
 			</div>
 		</div>
